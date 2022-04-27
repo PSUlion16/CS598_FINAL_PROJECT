@@ -1,0 +1,1 @@
+This folder is to be used for holding cleansed data as an output of clean_data.py
