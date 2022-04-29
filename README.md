@@ -29,24 +29,28 @@ _Deep Learning for Healthcare - Final Project - Classification of ICD-9 codes to
 
 - clean_data.py
   - Used for data processing of datasets from MIMIC-III
-- train_model.py
-  - Used for training the fastText model
+- evaluate_models.py
+  - Evaluate the performance of both the bag-of-tricks as well as the CNN model
+- train_models_bot.py
+  - Used for training the fastText models, for both rolled and regular ICD9 codes
+- train_models_cnn.py
+  - Used for training the CNN models, for both baseline and 3-conv1d architecture
 - fasttext-0.9.2-cp310-cp310-win_amd64.whl
   - Some users may encounter issues when trying to install fastText (used for binary classification) to their local environments. This whl file can be used to manually install fastText to your venv
     - Command: **pip install fasttext-0.9.2-cp310-cp310-win_amd64.whl**
 
 ###**HOW TO RUN**
-    1. Clean Data
+    1. CLEAN Data
         - Run clean_data.py from venv, or from terminal with "python clean_data.py"
         - You will see cleansed data within the cleansed_data directory
 
-    2. Train Model for bag of tricks (NOT NEEDED UNLESS YOU WANT TO RETRAIN!)
+    2. TRAIN Model for BAG OF TRICKS (NOT NEEDED UNLESS YOU WANT TO RETRAIN!)
         - To retrain, run train_models_bot.py from venv, or from terminal with "python train_models_bot.py"
-            - Model for regular ICD codes is saved at ./models/model_reg.bin
-            - Model for rolled ICD codes is saved at ./models/model_reg.bin
+            - Model for regular ICD codes is saved at ./models/model_regular_BOT.bin
+            - Model for rolled ICD codes is saved at ./models/model_rolled_BOT.bin
 
-    3. Train Model for CNN (NOT NEEDED UNLESS YOU WANT TO RETRAIN!)
-        - To retrain, run train_models_cnn.py from venc, or from terminal with "python train_models_cnn.py"
+    3. TRAIN Model for CNN (NOT NEEDED UNLESS YOU WANT TO RETRAIN!)
+        - To retrain, run train_models_cnn.py from venv, or from terminal with "python train_models_cnn.py"
 
-    4. Evaluate model performance on pre-processed data
+    4. EVALUATE model performance on pre-processed data
         - Run evaluate models.py from venv, or from terminal with "python evaluate_models.py"

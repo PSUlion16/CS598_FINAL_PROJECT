@@ -125,7 +125,7 @@ def save_training_files(notes_df, diagnoses_df, unique_admit_list):
 
     # We will save off two versions of this cleansed file, the rolled and the unrolled ICD 9 codes
     # For each hospital visit, output the lines for REGULAR ICD9 codes
-    with open(cleansed_regular, 'w') as f:
+    with open(cleansed_regular, 'w', encoding='utf8') as f:
         for item in np.nditer(unique_admit_list):
 
             diagnosis = diagnoses_df[diagnoses_df['HADM_ID'] == item]
@@ -146,7 +146,7 @@ def save_training_files(notes_df, diagnoses_df, unique_admit_list):
             f.write('\n')
 
     # For each hospital visit, output lines for ROLLED ICD9 codes
-    with open(cleansed_rolled, 'w') as f:
+    with open(cleansed_rolled, 'w', encoding='utf8') as f:
         for item in np.nditer(unique_admit_list):
 
             diagnosis = diagnoses_df[diagnoses_df['HADM_ID'] == item]

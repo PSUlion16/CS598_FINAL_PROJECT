@@ -1,0 +1,1 @@
+This directory is for saving of the machine learning models - pre-trained models will be stored here
