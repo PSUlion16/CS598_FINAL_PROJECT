@@ -4,9 +4,12 @@ import logging
 import os
 import re
 
-# Genism Libraries, used for vector space modeling
 import numpy as np
 import pandas as pd
+from filesplit.split import Split
+import math
+from operator import itemgetter
+
 
 # Set Logging -- basic configuration
 logging.basicConfig(format='%(asctime)s -- %(levelname)s: %(message)s',
@@ -117,11 +120,19 @@ def cleanse_notes(unique_subjects: list, unique_admits: list):
     return notes_df
 
 
-# This method will save off the notes / diagnoses in a cleansed format so we will not need to keep reading each pass
+# This method will save off the notes / diagnoses in an ingestable cleansed format
+# This will produce three files:
+#    1. regular_input.txt -> version of input using regular ICD9 codes associated with clinical text
+#    2. rolled_input.txt -> version of input using rolled ICD9 codes associated with clinical text
+#    3. rolled_common_input.txt -> version of input using rolled ICD9 codes, but only the top 10 common codes, not
+#          including 250, which is diabetes and common across all records
 def save_training_files(notes_df, diagnoses_df, unique_admit_list):
+    my_logger.info("Saving cleansed input files ...")
+
     cleansed_input_filepath = './cleansed_data/'
     cleansed_regular = cleansed_input_filepath + 'regular_input.txt'
     cleansed_rolled = cleansed_input_filepath + 'rolled_input.txt'
+    cleansed_common_rolled = cleansed_input_filepath + 'rolled_common_input.txt'
 
     # We will save off two versions of this cleansed file, the rolled and the unrolled ICD 9 codes
     # For each hospital visit, output the lines for REGULAR ICD9 codes
@@ -145,6 +156,9 @@ def save_training_files(notes_df, diagnoses_df, unique_admit_list):
             # Next Line
             f.write('\n')
 
+    # common dictionary to track the most common rolled ICD9 codes
+    common_codes = {}
+
     # For each hospital visit, output lines for ROLLED ICD9 codes
     with open(cleansed_rolled, 'w', encoding='utf8') as f:
         for item in np.nditer(unique_admit_list):
@@ -153,11 +167,23 @@ def save_training_files(notes_df, diagnoses_df, unique_admit_list):
             note = notes_df[notes_df['HADM_ID'] == item]
 
             # For each diagnosis per hospital admit,
+            dup_dic = {}
             for row in diagnosis.itertuples(index=True):
-                if row.Index == 1:
-                    f.write('__label__' + str(row.ICD9_CODE_ROLLED))
-                else:
-                    f.write(' __label__' + str(row.ICD9_CODE_ROLLED))
+
+                # only insert to the rolled file if not a duplicate
+                if row.ICD9_CODE_ROLLED not in dup_dic:
+                    # Keep track of the number of common codes, this will be used for creating the common input file
+                    # I do this here because the dups jack up the common list otherwise
+                    if row.ICD9_CODE_ROLLED not in common_codes and row.ICD9_CODE_ROLLED != '250' and row.ICD9_CODE_ROLLED.find('V') == -1:
+                        common_codes[row.ICD9_CODE_ROLLED] = 1
+                    elif row.ICD9_CODE_ROLLED != '250' and row.ICD9_CODE_ROLLED.find('V') == -1:
+                        common_codes[row.ICD9_CODE_ROLLED] = common_codes[row.ICD9_CODE_ROLLED] + 1
+
+                    dup_dic[row.ICD9_CODE_ROLLED] = 1
+                    if row.Index == 1:
+                        f.write('__label__' + str(row.ICD9_CODE_ROLLED))
+                    else:
+                        f.write(' __label__' + str(row.ICD9_CODE_ROLLED))
 
             # Add the note to the end of the line
             for row in note.itertuples(index=True):
@@ -166,7 +192,111 @@ def save_training_files(notes_df, diagnoses_df, unique_admit_list):
             # Next Line
             f.write('\n')
 
+    # only take the top 10 common codes
+    common_codes = dict(sorted(common_codes.items(), key=itemgetter(1), reverse=True)[:10])
 
+    # For each hospital visit, output lines for ROLLED ICD9 codes
+    with open(cleansed_common_rolled, 'w', encoding='utf8') as f:
+        for item in np.nditer(unique_admit_list):
+
+            diagnosis = diagnoses_df[diagnoses_df['HADM_ID'] == item]
+            note = notes_df[notes_df['HADM_ID'] == item]
+
+            # don't do anything for blank HADM notes
+            if len(note) > 0:
+                # For each diagnosis per hospital admit,
+                label_inserted = False
+                for row in diagnosis.itertuples(index=True):
+
+                    # only insert to the rolled file if not a duplicate
+                    if row.ICD9_CODE_ROLLED in common_codes:
+                        if not label_inserted:
+                            f.write('__label__' + str(row.ICD9_CODE_ROLLED))
+                            label_inserted = True
+                        else:
+                            f.write(' __label__' + str(row.ICD9_CODE_ROLLED))
+
+                # if no labels in common found, skip this row complete
+                if label_inserted:
+                    # Add the note to the end of the line
+                    for row in note.itertuples(index=True):
+                        f.write(' ' + str(row.TEXT))
+
+                    # Next Line
+                    f.write('\n')
+
+    # Print statistics for the common codes - will not include rolled code 250
+    my_logger.info("Statistics for top 10 common ICD9 Rolled codes occurrences")
+    my_logger.info(common_codes)
+
+
+# This method will do a simple 90/10 split of the data into a train and test set. This step is required by fast text
+# as it only allows us to input text files for consumption
+def split_inputs() -> None:
+    my_logger.info("Splitting cleansed input files ...")
+
+    # Clean up old files, if they exist
+    if os.path.isfile("./cleansed_data/manifest"):
+        os.remove("./cleansed_data/manifest")
+    if os.path.isfile("./cleansed_data/regular_input.test"):
+        os.remove("./cleansed_data/regular_input.test")
+    if os.path.isfile("./cleansed_data/regular_input.train"):
+        os.remove("./cleansed_data/regular_input.train")
+    if os.path.isfile("./cleansed_data/rolled_input.train"):
+        os.remove("./cleansed_data/rolled_input.train")
+    if os.path.isfile("./cleansed_data/rolled_input.test"):
+        os.remove("./cleansed_data/rolled_input.test")
+    if os.path.isfile("./cleansed_data/rolled_common_input.train"):
+        os.remove("./cleansed_data/rolled_common input.train")
+    if os.path.isfile("./cleansed_data/rolled_common_input.test"):
+        os.remove("./cleansed_data/rolled_common input.test")
+
+    with open("./cleansed_data/regular_input.txt", "r") as f:
+        length_of_file = len(f.readlines())
+
+    lines_to_split = math.floor(length_of_file * .9)
+
+    my_logger.info("Length of regular/rolled_input.txt: " + str(length_of_file))
+
+    # create split instance
+    split = Split("./cleansed_data/regular_input.txt", "./cleansed_data")
+
+    # split file
+    split.bylinecount(lines_to_split)
+
+    # rename the files to TRAIN / TEST
+    os.rename("./cleansed_data/regular_input_1.txt", "./cleansed_data/regular_input.train")
+    os.rename("./cleansed_data/regular_input_2.txt", "./cleansed_data/regular_input.test")
+
+    # ROLLED CODES NEXT
+    split = Split("./cleansed_data/rolled_input.txt", "./cleansed_data")
+
+    # split file
+    split.bylinecount(lines_to_split)
+
+    # rename the files to TRAIN / TEST
+    os.rename("./cleansed_data/rolled_input_1.txt", "./cleansed_data/rolled_input.train")
+    os.rename("./cleansed_data/rolled_input_2.txt", "./cleansed_data/rolled_input.test")
+
+    # since I cleansed, we need to make this a smaller amount
+    with open("./cleansed_data/rolled_common_input.txt", "r") as f:
+        length_of_file = len(f.readlines())
+
+    lines_to_split = math.floor(length_of_file * .9)
+
+    my_logger.info("Length of rolled_common_input.txt: " + str(length_of_file))
+
+    # ROLLED COMMON CODES NEXT
+    split = Split("./cleansed_data/rolled_common_input.txt", "./cleansed_data")
+
+    # split file
+    split.bylinecount(lines_to_split)
+
+    # rename the files to TRAIN / TEST
+    os.rename("./cleansed_data/rolled_common_input_1.txt", "./cleansed_data/rolled_common_input.train")
+    os.rename("./cleansed_data/rolled_common_input_2.txt", "./cleansed_data/rolled_common_input.test")
+
+    my_logger.info("Input files split.")
 
 # Main method - python will automatically run this
 if __name__ == '__main__':
@@ -177,5 +307,8 @@ if __name__ == '__main__':
     #my_logger.info(notes_df['CATEGORY'].unique())
     #my_logger.info(notes_df[notes_df['HADM_ID'] == 140784])
     #my_logger.info(diagnoses_df[diagnoses_df['HADM_ID'] == 140784])
+
     save_training_files(notes_df, diagnoses_df, unique_admit_list)
+    split_inputs()
+
     my_logger.info("CLEANSING COMPLETE")
