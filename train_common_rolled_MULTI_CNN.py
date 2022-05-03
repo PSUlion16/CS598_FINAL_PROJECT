@@ -1,29 +1,15 @@
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
-import matplotlib.pyplot as plt
 import logging
 
-from sklearn.feature_extraction.text import CountVectorizer
 from tensorflow import keras
 from sklearn.model_selection import train_test_split
 from ast import literal_eval
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import MultiLabelBinarizer
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.model_selection import RandomizedSearchCV
 
 import tensorflow as tf
 from keras.models import Sequential
 from keras import layers
 from keras import metrics
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
-from keras.wrappers.scikit_learn import KerasClassifier
 
 import os
 
@@ -185,7 +171,7 @@ model.compile(loss="binary_crossentropy", optimizer="adam", metrics=[metrics.Pre
 # history if i want to plot
 history = model.fit(train_dataset, validation_data=validation_dataset, epochs=epochs)
 
-# Evaluate the model
+# Evaluate the model -- 20 epochs, prec: .701906 recall: .609022
 _, precision, recall = model.evaluate(test_dataset)
 my_logger.info("Precision: " + str(precision))
 my_logger.info("Recall: " + str(recall))
