@@ -71,7 +71,7 @@ This code ran successfully on a system with the following specifications:
             - Model for rolled ICD codes (multi classifier) is saved at ./models/model_rolled_common_MULTI_BOT.bin
 
     3. TRAIN Model for CNN (NOT NEEDED UNLESS YOU WANT TO RETRAIN!)
-        - To retrain, run train_common_rolled_MULTI_CNN.py from venv, or from terminal with "python train_common_rolled_MULTI_CNN.py"
+        - To retrain, run train_common_rolled_BINARY_CNN.py from venv, or from terminal with "python train_common_rolled_MULTI_CNN.py"
         - There is no model saved, this is done within memory in the script itself
 
     NOTE -- All Training scripts will output the result at the end, assuming you have downloaded the text
@@ -89,7 +89,7 @@ BINARY MULTI (Observed in Code):
 - Precision: .797761
 - Recall: .170684
 
-MULTI CNN (Observed in Code):
+BINARY CNN (Observed in Code):
 - ~40m (1.5m per epoch @ 20 epochs)
 - Precision: .701906
 - Recall: .609022
